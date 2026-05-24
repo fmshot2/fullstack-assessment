@@ -1,9 +1,10 @@
 const express = require("express");
 const productsRepository = require("../repositories/productsRepository");
+const { requireAdminToken } = require("../middleware/auth");
 
 const router = express.Router();
 
-router.post("/products", async (req, res, next) => {
+router.post("/products", requireAdminToken, async (req, res, next) => {
   try {
     const { sku, name, description, price, stock } = req.body;
     if (!sku || !name || price == null || stock == null) {
@@ -24,7 +25,7 @@ router.post("/products", async (req, res, next) => {
   }
 });
 
-router.patch("/products/:id", async (req, res, next) => {
+router.patch("/products/:id", requireAdminToken, async (req, res, next) => {
   try {
     const { price, stock, description, name } = req.body;
     const product = await productsRepository.updateProduct(req.params.id, {
