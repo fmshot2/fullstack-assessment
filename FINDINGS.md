@@ -54,6 +54,15 @@
 
 ## Frontend
 
+### Issue: Buy Now Button text Does Not Show — 
+
+- **Where:** `frontend/src/pages/ProductDetailPage.tsx` — Buy Now Button text Does Not Show on the browser.
+- **Why:** The primary class has a text color of #ffff, and the buuton itself has no background color, it is white. So the text "Buy Now" doesn't show up.
+- **Impact:** Users will be confused on where and how to actually buy the product therby leading to low selling rate of products.
+- **Fix:** I removed the primary class. It's not necessary for that button since the white button is consisten with its neighbour, it's the text that should be change to black, which removing the primary class does.
+
+---
+
 ### Issue: Memory leak — `setInterval` not cleared on unmount
 
 - **Where:** `frontend/src/pages/OrderDetailPage.tsx` — `useEffect` hook. `setInterval` was called but its return value (the interval ID) was never stored, and no cleanup function was returned.
