@@ -1,27 +1,55 @@
 const pool = require("../db/postgres");
 
-async function createOrder(
-  { customerId, totalAmount, items },
-  client = pool,
-) {
-  const orderQuery = `
-    INSERT INTO orders (customer_id, total_amount, status)
-    VALUES ($1, $2, 'PENDING')
-    RETURNING id, customer_id AS "customerId", total_amount AS "totalAmount",
-              status, created_at AS "createdAt"
-  `;
-  const { rows } = await client.query(orderQuery, [customerId, totalAmount]);
-  const order = rows[0];
-
-  for (const item of items) {
-    await client.query(
-      `INSERT INTO order_items (order_id, product_id, quantity, unit_price)
-       VALUES ($1, $2, $3, $4)`,
-      [order.id, item.productId, item.quantity, item.unitPrice],
-    );
+async function createOrder({ customerId, items }) {
+  if (!customerId || !Array.isArray(items) || items.length === 0) {
+    const error = new Error("customerId and items are required");
+    error.status = 400;
+    throw error;
   }
 
-  return order;
+  return withTransaction(async (client) => {
+    const enrichedItems = [];
+    for (const item of items) {
+      const product = await productsRepository.getProductByIdForUpdate(item.productId, client);
+      if (!product) {
+        const error = new Error(`Product ${item.productId} not found`);
+        error.status = 404;
+        throw error;
+      }
+      if (product.stock < item.quantity) {
+        const error = new Error(`Insufficient stock for ${product.name}`);
+        error.status = 409;
+        throw error;
+      }
+      enrichedItems.push({
+        productId: product.id,
+        quantity: item.quantity,
+        unitPrice: Number(product.price),
+      });
+    }
+
+    for (const item of enrichedItems) {
+      const result = await productsRepository.decrementStock(item.productId, item.quantity, client);
+      if (!result) {
+        const error = new Error(`Stock conflict for product ${item.productId}`);
+        error.status = 409;
+        throw error;
+      }
+    }
+
+    // Compute totalAmount server-side (also fixes Bug #6)
+    const totalAmount = enrichedItems.reduce(
+      (sum, item) => sum + item.unitPrice * item.quantity, 0
+    );
+
+    const order = await ordersRepository.createOrder({
+      customerId,
+      totalAmount,
+      items: enrichedItems,
+    }, client);
+
+    return order;
+  });
 }
 
 async function listOrders({ limit = 50, offset = 0 } = {}) {
