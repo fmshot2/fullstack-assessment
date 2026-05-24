@@ -52,7 +52,7 @@ export default function ProductDetailPage() {
       </div>
       <div className="actions">
         <button onClick={() => add(product, quantity)}>Add to cart</button>
-        <button onClick={buyNow} className="primary">
+        <button onClick={buyNow} disabled={product.stock === 0}>
           Buy now
         </button>
       </div>
