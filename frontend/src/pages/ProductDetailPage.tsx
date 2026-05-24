@@ -22,33 +22,41 @@ export default function ProductDetailPage() {
 
   async function buyNow() {
     if (!product) return;
-    const order = await createOrder({
-      customerId: "customer_001",
-      items: [{ productId: product.id, quantity }],
-      totalAmount: parseFloat(product.price) * quantity,
-    });
-    navigate(`/orders/${order.id}`);
+    try {
+      const order = await createOrder({
+        customerId: "customer_001",
+        items: [{ productId: product.id, quantity }],
+      });
+      navigate(`/orders/${order.id}`);
+    } catch (err) {
+      alert("Order failed. Please try again.");
+    }
   }
 
   return (
     <div className="page">
       <h1>{product.name}</h1>
       <p className="sku">{product.sku}</p>
-      <div
+      {/* <div
         className="description"
         dangerouslySetInnerHTML={{ __html: product.description }}
-      />
+      /> */}
+      <p className="description">{product.description}</p>
       <p className="price">${product.price}</p>
       <p className="stock">
         {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
       </p>
       <div className="qty-row">
-        <input
-          type="number"
-          min={1}
-          value={quantity}
-          onChange={(e) => setQuantity(Number(e.target.value))}
-        />
+        {product.stock > 0 && <label htmlFor="quantity">Quantity:</label>}
+        {product.stock > 0 && (
+          <input
+            type="number"
+            min={1}
+            max={product.stock}
+            value={quantity}
+            onChange={(e) => setQuantity(Number(e.target.value))}
+          />
+        )}
       </div>
       <div className="actions">
         <button onClick={() => add(product, quantity)}>Add to cart</button>

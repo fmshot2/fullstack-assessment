@@ -17,9 +17,9 @@ multiplication for money. Suggest a fix that does not require installing
 a third-party package. Don't write code just float some ideas.
 ```
 
-The model initially suggested using `decimal.js`. I rejected that and decided to use integer kobo arithmetic — multiply by 100 on read, compute as integers, divide by 100
-before storage or display. See section 3 for detail
-on the rejected output.
+The model initially suggested using `decimal.js`. I rejected that and decided to use 
+integer kobo arithmetic — multiply by 100 on read, compute as integers, divide by 100 before 
+storage or display. See section 3 for detail on the rejected output.
 
 ---
 
@@ -140,3 +140,15 @@ the app-level check alone does not protect against two simultaneous webhook
 deliveries that both pass the check before either inserts. The DB constraint
 is the hard guarantee; the app check is the optimisation. This two-layer
 decision was mine.
+
+### Moving Total Amount from frontend to Backend
+romeved all traces of total amount from frontend to the backend for safety and security reasons.
+
+
+### Capping What quantity users can select for purchase and Capping Cart updates for adding products
+I capped what the users and purchase to be less than or equal to product quantity. 
+Also did the same for adding to Cart. You can't add more to cart than what's in the product quantity.
+
+
+### Removing dangerouslySetInnerHTML
+I remove this from product detail page

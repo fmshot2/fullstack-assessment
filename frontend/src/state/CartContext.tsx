@@ -25,9 +25,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems((current) => {
       const existing = current.find((i) => i.productId === product.id);
       if (existing) {
+        const newQuantity = existing.quantity + quantity;
+        const capped = Math.min(newQuantity, product.stock);
         return current.map((i) =>
           i.productId === product.id
-            ? { ...i, quantity: i.quantity + quantity }
+            ? { ...i, quantity: capped }
             : i,
         );
       }
@@ -36,8 +38,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         {
           productId: product.id,
           name: product.name,
-          price: Math.round(parseFloat(product.price) * 100), // store as kobo  
-          quantity,
+          price: Math.round(parseFloat(product.price) * 100),
+          quantity: Math.min(quantity, product.stock),
+          stock: product.stock,
         },
       ];
     });

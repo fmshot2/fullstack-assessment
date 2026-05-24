@@ -54,15 +54,6 @@
 
 ## Frontend
 
-### Issue: Buy Now Button text Does Not Show — 
-
-- **Where:** `frontend/src/pages/ProductDetailPage.tsx` — Buy Now Button text Does Not Show on the browser.
-- **Why:** The primary class has a text color of #ffff, and the buuton itself has no background color, it is white. So the text "Buy Now" doesn't show up.
-- **Impact:** Users will be confused on where and how to actually buy the product therby leading to low selling rate of products.
-- **Fix:** I removed the primary class. It's not necessary for that button since the white button is consisten with its neighbour, it's the text that should be change to black, which removing the primary class does.
-
----
-
 ### Issue: Memory leak — `setInterval` not cleared on unmount
 
 - **Where:** `frontend/src/pages/OrderDetailPage.tsx` — `useEffect` hook. `setInterval` was called but its return value (the interval ID) was never stored, and no cleanup function was returned.
@@ -72,6 +63,52 @@
 - **Trade-offs:** None. This is the correct React pattern for any side effect that needs cleanup.
 
 ---
+
+### Issue: Buy Now Button text Does Not Show — 
+
+- **Where:** `frontend/src/pages/ProductDetailPage.tsx` — Buy Now Button text Does Not Show on the browser.
+- **Why:** The primary class has a text color of #ffff, and the buuton itself has no background color, it is white. So the text "Buy Now" doesn't show up.
+- **Impact:** Users will be confused on where and how to actually buy the product therby leading to low selling rate of products.
+- **Fix:** I removed the primary class. It's not necessary for that button since the white button is consisten with its neighbour, it's the text that should be change to black, which removing the primary class does.
+
+---
+
+### Issue: Product Quantity select Cap - I can add more quantity than the available product stock  when choosing quantity to buy — 
+
+- **Where:** `frontend/src/pages/ProductDetailPage.tsx` 
+- **Why:** — I can add more quantity than the product stock when choosing quantity to buy.
+- **Impact:** Users will be confused if they select a certain quantity and buy now doesn't work. They won't easily know that the quantity overshoots the available product quantity.
+- **Fix:** I added max amount to the input field. also added a lebel of quantity to the input.
+
+---
+
+### Issue: Cart quantity cap - I can add more products to cart than the available product stock  when adding to cart— 
+
+- **Where:** `frontend/src/pages/ProductDetailPage.tsx` 
+- **Why:** — I can add more quantity than the product stock when adding to cart.
+- **Impact:** Adding more product quantity to cart than is available will throw errors later.
+- **Fix:** In CartContext.tsx I added a cap to the add funtion. so user can't add more than the product quantity.
+
+---
+
+### Issue: dangerouslySetInnerHTML - Untrusted HTML
+
+- **Where:** `frontend/src/pages/ProductDetailPage.tsx` 
+- **Why:** — This is the untrusted HTML rendering issue the assessors flagged! product.description comes from the DB and is rendered as raw HTML — .
+- **Impact:** This is a stored XSS vulnerability (Allows for sql injection attack).
+- **Fix:** Removed the dangerouslySetInnerHTML and rendered the div directly.
+
+---
+
+### Issue: Buy Now uses totalAmount from frontend - fake figure can be inputed by hacker on frontend
+
+- **Where:** `frontend/src/pages/ProductDetailPage.tsx` 
+- **Why:** — Sending total amount from frontend is untrusworthy. Laible to attack is the untrusted HTML rendering issue the assessors flagged! product.description comes from the DB and is rendered as raw HTML — .
+- **Impact:** This is a known vulnerability in payment systems. Liable to attacks.
+- **Fix:** Removed the totalAmount since backend is now calculating it and I added error handling:.
+
+---
+
 
 ### Issue: Double-submit on Pay button
 
