@@ -19,21 +19,32 @@ export default function AdminPage() {
     }));
   }
 
+  const [saving, setSaving] = useState<Record<number, boolean>>({});
+
   async function save(p: Product) {
     const draft = editing[p.id] || {};
-    setProducts((current) =>
-      current.map((it) =>
-        it.id === p.id
-          ? { ...it, ...draft, price: String(draft.price ?? it.price) }
-          : it,
-      ),
-    );
-    await updateProductAdmin(p.id, {
-      price: draft.price !== undefined ? Number(draft.price) : undefined,
-      stock: draft.stock !== undefined ? Number(draft.stock) : undefined,
-      description: draft.description as string | undefined,
-      name: draft.name as string | undefined,
-    });
+    setSaving((prev) => ({ ...prev, [p.id]: true }));
+    try {
+      const updated = await updateProductAdmin(p.id, {
+        price: draft.price !== undefined ? Number(draft.price) : undefined,
+        stock: draft.stock !== undefined ? Number(draft.stock) : undefined,
+        description: draft.description as string | undefined,
+        name: draft.name as string | undefined,
+      });
+      // ✅ Only update UI after server confirms
+      setProducts((current) =>
+        current.map((it) => (it.id === p.id ? updated : it))
+      );
+      setEditing((prev) => {
+        const next = { ...prev };
+        delete next[p.id];
+        return next;
+      });
+    } catch (err) {
+      alert(`Failed to save product ${p.name}. Please try again.`);
+    } finally {
+      setSaving((prev) => ({ ...prev, [p.id]: false }));
+    }
   }
 
   return (
@@ -92,7 +103,9 @@ export default function AdminPage() {
                   onChangeField(p.id, "description", e.target.value)
                 }
               />
-              <button onClick={() => save(p)}>Save</button>
+              <button onClick={() => save(p)} disabled={saving[p.id]}>
+                {saving[p.id] ? "Saving..." : "Save"}
+              </button>
             </li>
           ))}
         </ul>

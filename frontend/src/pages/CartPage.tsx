@@ -1,23 +1,32 @@
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../state/CartContext";
 import { createOrder } from "../api";
+import { useState } from "react";
 
 export default function CartPage() {
   const { items, total, remove, clear } = useCart();
   const navigate = useNavigate();
 
+  const [checkingOut, setCheckingOut] = useState(false);
+
   async function checkout() {
-    if (items.length === 0) return;
-    const order = await createOrder({
-      customerId: "customer_001",
-      items: items.map((i) => ({
-        productId: i.productId,
-        quantity: i.quantity,
-      })),
-      totalAmount: total,
-    });
-    clear();
-    navigate(`/orders/${order.id}`);
+    if (items.length === 0 || checkingOut) return;
+    setCheckingOut(true);
+    try {
+      const order = await createOrder({
+        customerId: "customer_001",
+        items: items.map((i) => ({
+          productId: i.productId,
+          quantity: i.quantity,
+        })),
+      });
+      clear();
+      navigate(`/orders/${order.id}`);
+    } catch (err) {
+      alert("Checkout failed. Please try again.");
+    } finally {
+      setCheckingOut(false);
+    }
   }
 
   if (items.length === 0) {
