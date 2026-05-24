@@ -44,7 +44,7 @@ async function createOrder({ customerId, items }) {
       enrichedItems.push({
         productId: product.id,
         quantity: item.quantity,
-        unitPrice: Number(product.price),
+        unitPrice: Math.round(Number(product.price) * 100), // store as kobo
       });
     }
 
@@ -57,14 +57,18 @@ async function createOrder({ customerId, items }) {
       }
     }
 
-    const totalAmount = enrichedItems.reduce(
+    const totalAmountCents = enrichedItems.reduce(
       (sum, item) => sum + item.unitPrice * item.quantity, 0
     );
+    const totalAmount = (totalAmountCents / 100).toFixed(2); // back to Naira
 
     const order = await ordersRepository.createOrder({
       customerId,
       totalAmount,
-      items: enrichedItems,
+      items: enrichedItems.map((item) => ({
+        ...item,
+        unitPrice: (item.unitPrice / 100).toFixed(2), // back to naira for DB
+      })),
     }, client);
 
     return order;

@@ -36,7 +36,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         {
           productId: product.id,
           name: product.name,
-          price: parseFloat(product.price),
+          price: Math.round(parseFloat(product.price) * 100), // store as kobo  
           quantity,
         },
       ];
@@ -50,7 +50,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clear = useCallback(() => setItems([]), []);
 
   const total = useMemo(
-    () => items.reduce((sum, i) => sum + i.price * i.quantity, 0),
+    () => items.reduce((sum, i) => sum + i.price * i.quantity, 0) / 100,
     [items],
   );
 
