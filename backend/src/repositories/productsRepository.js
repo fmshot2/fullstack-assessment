@@ -23,12 +23,12 @@ async function listProducts({ q } = {}, client = pool) {
   return rows;
 }
 
-async function getProductByIdForUpdate(productId, client) {
+async function getProductById(productId, client = pool) {
   const query = `
-    SELECT id, sku, name, description, price, stock
+    SELECT id, sku, name, description, price, stock,
+           created_at AS "createdAt", updated_at AS "updatedAt"
     FROM products
     WHERE id = $1
-    FOR UPDATE
   `;
   const { rows } = await client.query(query, [productId]);
   return rows[0] || null;
@@ -39,6 +39,7 @@ async function getProductByIdForUpdate(productId, client) {
     SELECT id, sku, name, description, price, stock
     FROM products
     WHERE id = $1
+    FOR UPDATE
   `;
   const { rows } = await client.query(query, [productId]);
   return rows[0] || null;

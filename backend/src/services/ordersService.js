@@ -20,48 +20,55 @@ async function withTransaction(callback) {
   }
 }
 
-async function createOrder({ customerId, items, totalAmount }) {
+async function createOrder({ customerId, items }) {
   if (!customerId || !Array.isArray(items) || items.length === 0) {
     const error = new Error("customerId and items are required");
     error.status = 400;
     throw error;
   }
 
-  const enrichedItems = [];
-  for (const item of items) {
-    const product = await productsRepository.getProductById(item.productId);
-    if (!product) {
-      const error = new Error(`Product ${item.productId} not found`);
-      error.status = 404;
-      throw error;
+  return withTransaction(async (client) => {
+    const enrichedItems = [];
+    for (const item of items) {
+      const product = await productsRepository.getProductByIdForUpdate(item.productId, client);
+      if (!product) {
+        const error = new Error(`Product ${item.productId} not found`);
+        error.status = 404;
+        throw error;
+      }
+      if (product.stock < item.quantity) {
+        const error = new Error(`Insufficient stock for ${product.name}`);
+        error.status = 409;
+        throw error;
+      }
+      enrichedItems.push({
+        productId: product.id,
+        quantity: item.quantity,
+        unitPrice: Number(product.price),
+      });
     }
-    if (product.stock < item.quantity) {
-      const error = new Error(`Insufficient stock for ${product.name}`);
-      error.status = 409;
-      throw error;
-    }
-    enrichedItems.push({
-      productId: product.id,
-      quantity: item.quantity,
-      unitPrice: Number(product.price),
-    });
-  }
 
-  for (const item of enrichedItems) {
-    await productsRepository.decrementStock(
-      item.productId,
-      item.quantity,
-      db,
+    for (const item of enrichedItems) {
+      const result = await productsRepository.decrementStock(item.productId, item.quantity, client);
+      if (!result) {
+        const error = new Error(`Stock conflict for product ${item.productId}`);
+        error.status = 409;
+        throw error;
+      }
+    }
+
+    const totalAmount = enrichedItems.reduce(
+      (sum, item) => sum + item.unitPrice * item.quantity, 0
     );
-  }
 
-  const order = await ordersRepository.createOrder({
-    customerId,
-    totalAmount: Number(totalAmount),
-    items: enrichedItems,
+    const order = await ordersRepository.createOrder({
+      customerId,
+      totalAmount,
+      items: enrichedItems,
+    }, client);
+
+    return order;
   });
-
-  return order;
 }
 
 async function chargeOrder({ orderId, idempotencyKey }) {
@@ -72,44 +79,46 @@ async function chargeOrder({ orderId, idempotencyKey }) {
     }
   }
 
-  const order = await ordersRepository.getOrderById(orderId);
-  if (!order) {
-    const error = new Error("Order not found");
-    error.status = 404;
-    throw error;
-  }
+  return withTransaction(async (client) => {
+    const order = await ordersRepository.getOrderByIdForUpdate(orderId, client);
+    if (!order) {
+      const error = new Error("Order not found");
+      error.status = 404;
+      throw error;
+    }
 
-  if (order.status !== "PENDING") {
-    const error = new Error("Only pending orders can be charged");
-    error.status = 409;
-    throw error;
-  }
+    if (order.status !== "PENDING") {
+      const error = new Error("Only pending orders can be charged");
+      error.status = 409;
+      throw error;
+    }
 
-  const gatewayResponse = await paymentGateway.charge({
-    orderId: order.id,
-    amount: order.totalAmount,
+    const gatewayResponse = await paymentGateway.charge({
+      orderId: order.id,
+      amount: order.totalAmount,
+    });
+
+    const payment = await paymentsRepository.createPayment({
+      orderId: order.id,
+      amount: gatewayResponse.chargedAmount,
+      providerTxnId: gatewayResponse.providerTxnId,
+      status: "SUCCESS",
+      idempotencyKey,
+    }, client);
+
+    const updatedOrder = await ordersRepository.markOrderAsPaid(order.id, client);
+
+    if (idempotencyKey) {
+      await redis.set(
+        `idem:${idempotencyKey}`,
+        JSON.stringify({ order: updatedOrder, payment }),
+        "EX",
+        3600,
+      );
+    }
+
+    return { order: updatedOrder, payment };
   });
-
-  const payment = await paymentsRepository.createPayment({
-    orderId: order.id,
-    amount: gatewayResponse.chargedAmount,
-    providerTxnId: gatewayResponse.providerTxnId,
-    status: "SUCCESS",
-    idempotencyKey,
-  });
-
-  const updatedOrder = await ordersRepository.markOrderAsPaid(order.id);
-
-  if (idempotencyKey) {
-    await redis.set(
-      `idem:${idempotencyKey}`,
-      JSON.stringify({ order: updatedOrder, payment }),
-      "EX",
-      3600,
-    );
-  }
-
-  return { order: updatedOrder, payment };
 }
 
 async function processPaymentWebhook({
@@ -147,6 +156,7 @@ async function listOrders(params) {
 }
 
 module.exports = {
+  withTransaction,
   createOrder,
   chargeOrder,
   processPaymentWebhook,
