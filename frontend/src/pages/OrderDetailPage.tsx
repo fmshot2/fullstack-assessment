@@ -22,10 +22,16 @@ export default function OrderDetailPage() {
   if (!order) return <p>Loading order...</p>;
 
   async function pay() {
+    if (paying) return;
     setPaying(true);
-    const result = await chargeOrder(order!.id);
-    setOrder(result.order);
-    setPaying(false);
+    try {
+      const result = await chargeOrder(order!.id);
+      setOrder(result.order);
+    } catch (err) {
+      alert("Payment failed. Please try again.");
+    } finally {
+      setPaying(false);
+    }
   }
 
   return (
@@ -56,7 +62,7 @@ export default function OrderDetailPage() {
       </ul>
 
       {order.status === "PENDING" && (
-        <button className="primary" onClick={pay}>
+        <button className="primary" onClick={pay} disabled={paying}>
           {paying ? "Charging..." : "Pay now"}
         </button>
       )}
