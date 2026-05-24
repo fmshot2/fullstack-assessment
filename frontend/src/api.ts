@@ -32,7 +32,6 @@ export function getProduct(id: number | string): Promise<Product> {
 export function createOrder(body: {
   customerId: string;
   items: { productId: number; quantity: number }[];
-  totalAmount: number;
 }): Promise<Order> {
   return request<Order>("/orders", {
     method: "POST",
