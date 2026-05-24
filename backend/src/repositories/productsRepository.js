@@ -3,13 +3,13 @@ const pool = require("../db/postgres");
 async function listProducts({ q } = {}, client = pool) {
   if (q) {
     const query = `
-      SELECT id, sku, name, description, price, stock,
-             created_at AS "createdAt", updated_at AS "updatedAt"
-      FROM products
-      WHERE name ILIKE '%${q}%' OR sku ILIKE '%${q}%'
-      ORDER BY id ASC
-    `;
-    const { rows } = await client.query(query);
+  SELECT id, sku, name, description, price, stock,
+         created_at AS "createdAt", updated_at AS "updatedAt"
+  FROM products
+  WHERE name ILIKE $1 OR sku ILIKE $1
+  ORDER BY id ASC
+`;
+    const { rows } = await client.query(query, [`%${q}%`]);
     return rows;
   }
 
