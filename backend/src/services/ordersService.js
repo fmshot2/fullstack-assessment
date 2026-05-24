@@ -127,18 +127,30 @@ async function processPaymentWebhook({
   eventType,
   payload,
 }) {
-  await paymentsRepository.createWebhookEvent({
-    providerEventId,
-    orderId,
-    eventType,
-    payload,
+  return withTransaction(async (client) => {
+    // Check for duplicate webhook event
+    const existing = await client.query(
+      `SELECT id FROM payment_events WHERE provider_event_id = $1`,
+      [providerEventId]
+    );
+
+    if (existing.rowCount > 0) {
+      return { accepted: true, duplicate: true };
+    }
+
+    await paymentsRepository.createWebhookEvent({
+      providerEventId,
+      orderId,
+      eventType,
+      payload,
+    }, client);
+
+    if (eventType === "payment_succeeded") {
+      await ordersRepository.markOrderAsPaid(orderId, client);
+    }
+
+    return { accepted: true, duplicate: false };
   });
-
-  if (eventType === "payment_succeeded") {
-    await ordersRepository.markOrderAsPaid(orderId);
-  }
-
-  return { accepted: true };
 }
 
 async function getOrderById(orderId) {
