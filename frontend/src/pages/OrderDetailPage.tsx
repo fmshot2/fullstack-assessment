@@ -12,9 +12,11 @@ export default function OrderDetailPage() {
     if (!id) return;
     getOrder(id).then(setOrder);
 
-    setInterval(() => {
+    const intervalId = setInterval(() => {
       getOrder(id).then(setOrder);
     }, 2000);
+
+    return () => clearInterval(intervalId);
   }, [id]);
 
   if (!order) return <p>Loading order...</p>;
